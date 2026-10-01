@@ -1,0 +1,38 @@
+[
+  {
+    "event_id": "click-1",
+    "customer_id": "cust-001",
+    "event_type": "page_view",
+    "event_time": "2026-10-01T09:00:00+07:00"
+  },
+  {
+    "event_id": "click-2",
+    "customer_id": "cust-001",
+    "event_type": "add_to_cart",
+    "event_time": "2026-10-01T09:01:00+07:00"
+  },
+  {
+    "event_id": "click-3",
+    "customer_id": "cust-001",
+    "event_type": "checkout",
+    "event_time": "2026-10-01T09:02:00+07:00"
+  },
+  {
+    "event_id": "click-4",
+    "customer_id": "cust-002",
+    "event_type": "page_view",
+    "event_time": "2026-10-01T09:03:00+07:00"
+  },
+  {
+    "event_id": "click-5",
+    "customer_id": "cust-003",
+    "event_type": "page_view",
+    "event_time": "2026-10-01T09:04:00+07:00"
+  },
+  {
+    "event_id": "click-6",
+    "customer_id": "cust-003",
+    "event_type": "add_to_cart",
+    "event_time": "2026-10-01T09:05:00+07:00"
+  }
+]

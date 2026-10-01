@@ -1,0 +1,104 @@
+name: nusacommerce_reference9
+x-app-env: &app-env
+  POSTGRES_URL: postgresql+psycopg://nusa:${POSTGRES_PASSWORD:-local-reference-only}@postgres:5432/nusacommerce
+  PAYMENT_API_URL: http://payments:8000
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  DBT_HOST: postgres
+  DBT_PORT: "5432"
+  DBT_USER: nusa
+  DBT_PASSWORD: ${POSTGRES_PASSWORD:-local-reference-only}
+  DBT_DBNAME: nusacommerce
+  LAKE_ROOT: /opt/nusa-project/artifacts/lake
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nusa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-reference-only}
+      POSTGRES_DB: nusacommerce
+    ports: ["127.0.0.1:55439:5432"]
+    volumes: [reference_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nusa -d nusacommerce"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  payments:
+    init: true
+    image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim@sha256:4f5d923c9dcea037f57bda425dd209f3ec643da2f0b74227f68d09dab0b3bb36
+    working_dir: /app
+    volumes: ["./scripts/mock_payment_api.py:/app/mock_payment_api.py:ro"]
+    command: ["python","mock_payment_api.py"]
+    environment: {PAYMENT_BIND_HOST: "0.0.0.0"}
+    ports: ["127.0.0.1:8009:8000"]
+  app:
+    init: true
+    build: {context: ., dockerfile: infra/Dockerfile}
+    image: nusacommerce-reference:day14
+    profiles: [tools]
+    environment: *app-env
+    volumes: [reference_artifacts:/opt/nusa-project/artifacts]
+    depends_on:
+      postgres: {condition: service_healthy}
+      payments: {condition: service_started}
+  kafka:
+    image: quay.io/strimzi/kafka:0.45.0-kafka-3.9.0
+    profiles: [streaming]
+    ports: ["127.0.0.1:19099:19099"]
+    volumes: ["./infra/kafka/server.properties:/tmp/server.properties:ro"]
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-storage.sh format --ignore-formatted -t MkU3OEVBNTcwNTJENDM2Qk -c /tmp/server.properties
+        exec /opt/kafka/bin/kafka-server-start.sh /tmp/server.properties
+    environment:
+      LOG_DIR: /tmp/kafka-logs
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  airflow:
+    init: true
+    stop_grace_period: 45s
+    build: {context: ., dockerfile: infra/Airflow.Dockerfile}
+    image: nusacommerce-reference-airflow:day14
+    profiles: [orchestration]
+    environment:
+      <<: *app-env
+      AIRFLOW_HOME: /opt/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/nusa-project/dags
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+    command: standalone
+    ports: ["127.0.0.1:8089:8080"]
+    volumes:
+      - reference_airflow:/opt/airflow
+      - reference_artifacts:/opt/nusa-project/artifacts
+    depends_on:
+      postgres: {condition: service_healthy}
+      payments: {condition: service_started}
+  metrics:
+    init: true
+    image: nusacommerce-reference:day14
+    profiles: [monitoring]
+    environment: *app-env
+    command: ["metrics-serve", "--host", "0.0.0.0"]
+    ports: ["127.0.0.1:8014:8014"]
+    depends_on:
+      postgres: {condition: service_healthy}
+  prometheus:
+    image: quay.io/prometheus/prometheus:v3.2.1
+    profiles: [monitoring]
+    ports: ["127.0.0.1:9094:9090"]
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./infra/monitoring/alerts.test.yml:/etc/prometheus/alerts.test.yml:ro
+    depends_on: [metrics]
+volumes:
+  reference_pg:
+  reference_airflow:
+  reference_artifacts:

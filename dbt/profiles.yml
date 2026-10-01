@@ -1,0 +1,13 @@
+nusacommerce:
+  target: local
+  outputs:
+    local:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('DBT_PORT', '55439') | int }}"
+      user: "{{ env_var('DBT_USER', 'nusa') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'local-reference-only') }}"
+      dbname: "{{ env_var('DBT_DBNAME', 'nusacommerce') }}"
+      schema: warehouse
+      threads: 2
+      connect_timeout: 5

@@ -34,6 +34,12 @@ coverage.xml
 # Logs and runtime files
 *.log
 *.pid
+dbt/target/
+dbt/logs/
+artifacts/
+.airflow-venv/
+.agents/
+dbt/.user.yml
 
 # Editors and operating systems
 .idea/

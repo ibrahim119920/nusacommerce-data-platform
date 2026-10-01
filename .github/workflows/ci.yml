@@ -1,0 +1,65 @@
+name: reference-ci
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nusa
+          POSTGRES_PASSWORD: ci-local-only
+          POSTGRES_DB: nusacommerce_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nusa -d nusacommerce_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      POSTGRES_URL: postgresql+psycopg://nusa:ci-local-only@127.0.0.1:5432/nusacommerce_ci
+      TEST_POSTGRES_URL: postgresql+psycopg://nusa:ci-local-only@127.0.0.1:5432/nusacommerce_ci_test
+      DBT_HOST: 127.0.0.1
+      DBT_PORT: "5432"
+      DBT_USER: nusa
+      DBT_PASSWORD: ci-local-only
+      DBT_DBNAME: nusacommerce_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "17"}
+      - name: Install reproducible direct dependencies
+        run: |
+          python -m pip install -r requirements-spark.txt -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+      - name: Create isolated test database
+        run: |
+          python -c "import os; from sqlalchemy import create_engine,text; e=create_engine(os.environ['POSTGRES_URL'],isolation_level='AUTOCOMMIT'); c=e.connect(); c.execute(text('CREATE DATABASE nusacommerce_ci_test')); c.close(); e.dispose()"
+      - name: Lint and compile
+        run: |
+          ruff check src tests scripts dags
+          python -m compileall -q src scripts dags
+      - name: Unit, integration, Spark and capstone
+        run: python scripts/ci_verify.py
+      - name: Build deployable app image
+        run: docker compose --profile tools build app
+      - name: Verify alert timing and firing conditions
+        run: docker run --rm --entrypoint promtool -v "$PWD/infra/monitoring:/etc/prometheus:ro" quay.io/prometheus/prometheus:v3.2.1 test rules /etc/prometheus/alerts.test.yml
+      - name: Preserve small evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence
+          path: |
+            dbt/target/run_results.json
+            dbt/target/manifest.json
+            artifacts/ci/lake/latest.json
+            artifacts/ci/lake/snapshot-*/manifest.json
+            artifacts/ci/lake/derived/*/*/report.json

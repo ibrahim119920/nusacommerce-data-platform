@@ -1,0 +1,42 @@
+rule_files:
+  - /etc/prometheus/alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="nusacommerce"}'
+        values: '1 0 0 0 0 0 0 0'
+      - series: nusa_pipeline_healthy
+        values: '1 0 0 0 0 0 0 0'
+      - series: nusa_quality_last_run_passed
+        values: '1 0 0 0 0 0 0 0'
+      - series: nusa_ingestion_stale_runs
+        values: '0 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: NusaPipelineUnhealthy
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: NusaExporterDown
+        exp_alerts:
+          - exp_labels: {job: nusacommerce, severity: critical}
+            exp_annotations:
+              summary: Exporter unavailable; inspect database and process health.
+      - eval_time: 7m
+        alertname: NusaPipelineUnhealthy
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: Ingestion freshness, latest-run state, or quality check failed.
+      - eval_time: 7m
+        alertname: NusaQualityFailed
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: Latest quality gate did not pass; do not trust publication.
+      - eval_time: 7m
+        alertname: NusaStuckIngestion
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: An ingestion run has remained running for more than an hour.

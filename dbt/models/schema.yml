@@ -1,0 +1,48 @@
+version: 2
+models:
+  - name: dim_customer
+    description: Customer Type 2 history, resolved using half-open validity ranges.
+    columns:
+      - name: customer_sk
+        tests: [unique, not_null]
+  - name: dim_product
+    columns:
+      - name: product_id
+        tests: [unique, not_null]
+  - name: fct_orders
+    description: Latest observed source version per order.
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: customer_sk
+        tests:
+          - not_null
+          - relationships: {to: ref('dim_customer'), field: customer_sk}
+      - name: currency
+        tests:
+          - accepted_values: {values: [IDR]}
+  - name: fct_order_items
+    columns:
+      - name: order_item_sk
+        tests: [unique, not_null]
+      - name: order_id
+        tests:
+          - relationships: {to: ref('fct_orders'), field: order_id}
+  - name: fct_payments
+    columns:
+      - name: payment_id
+        tests: [unique, not_null]
+      - name: order_id
+        tests:
+          - relationships: {to: ref('fct_orders'), field: order_id}
+  - name: fct_refunds
+    columns:
+      - name: refund_id
+        tests: [unique, not_null]
+      - name: order_id
+        tests:
+          - relationships: {to: ref('fct_orders'), field: order_id}
+  - name: dim_date
+    columns:
+      - name: date_day
+        tests: [unique, not_null]

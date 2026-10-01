@@ -1,0 +1,11 @@
+.git
+.venv
+.agents
+.env
+.env.*
+__pycache__
+*.pyc
+dbt/target
+dbt/logs
+artifacts
+**/*.egg-info

@@ -1,0 +1,27 @@
+name: manual-image-release
+# No credentials are used and nothing is published until a user dispatches this workflow.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tagged application image
+        run: docker compose --profile tools build app
+      - name: Publish immutable commit tag to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag nusacommerce-reference:day14 "$image"
+          docker push "$image"
+          echo "Published $image" >> "$GITHUB_STEP_SUMMARY"
