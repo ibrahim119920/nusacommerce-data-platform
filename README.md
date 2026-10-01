@@ -1,16 +1,15 @@
 # NusaCommerce Data Platform
 
-Project e-commerce untuk belajar membangun data pipeline dengan Python, PostgreSQL, dbt, Airflow, Kafka, Parquet, Spark, dan Docker. Dataset dan API-nya sintetis. Project ini dibuat sebagai portfolio internship dan dikembangkan sambil mengikuti course Data Engineering.
-
+Project e-commerce untuk belajar membangun data pipeline dengan Python, PostgreSQL, dbt, Airflow, Kafka, Parquet, Spark, dan Docker. Dataset dan API-nya sintetis. 
 ## Menjalankan project
 
-Perlu Docker Desktop dengan Linux containers. Dari PowerShell di Windows:
+Project menggunakan Docker Desktop dengan Linux containers. Dari PowerShell di Windows:
 
 ```powershell
 .\scripts\deploy_local.ps1
 ```
 
-Untuk menjalankan Airflow juga:
+Untuk menjalankan Airflow:
 
 ```powershell
 .\scripts\deploy_local.ps1 -WithAirflow
@@ -23,7 +22,7 @@ bash scripts/deploy_local.sh
 bash scripts/deploy_local.sh --with-airflow
 ```
 
-Saat pertama dijalankan, Docker mengunduh beberapa image dan dependency, termasuk Java dan PySpark. Prosesnya perlu waktu dan ruang disk.
+Image/dependency:
 
 | Service | Alamat lokal |
 | --- | --- |
@@ -33,8 +32,6 @@ Saat pertama dijalankan, Docker mengunduh beberapa image dan dependency, termasu
 | Prometheus | `http://localhost:9094` |
 | Airflow (opsional) | `http://localhost:8089` |
 | Kafka | `localhost:19099` |
-
-Semua alamat ini untuk penggunaan lokal. Airflow menggunakan mode standalone dengan akses admin; jangan buka servicenya ke internet. Jangan jalankan mock payments lokal bersamaan dengan versi Docker karena keduanya memakai port 8009.
 
 ## Alur data
 
@@ -47,9 +44,9 @@ Clickstream/Kafka┘                       │
 Metrics exporter ──> Prometheus
 ```
 
-Airflow mengatur delapan task dari ingestion sampai monitoring. Logika pemrosesan ada di Python package, terpisah dari DAG. Kafka sink menyimpan data ke PostgreSQL sebelum melakukan commit offset; karenanya konsumen dapat memproses ulang event, dan sink dibuat idempotent untuk menangani duplikasi.
+Airflow mengatur delapan task dari ingestion hingga monitoring. Logika pemrosesan ada di Python package, terpisah dari DAG. Kafka sink menyimpan data ke PostgreSQL sebelum melakukan commit offset; karenanya konsumen dapat memproses ulang event, dan sink dibuat idempotent untuk menangani duplikasi.
 
-Spark dijalankan lokal dengan dua worker pada satu mesin. Ini contoh pemrosesan batch, bukan cluster terdistribusi.
+Spark dijalankan lokal dengan dua worker.
 
 ## Memeriksa hasil
 
@@ -99,19 +96,6 @@ scripts/             deployment, mock API, dan verification
 tests/               unit test dan integration test
 docs/                arsitektur, ADR, runbook, dan catatan course
 ```
-
-Dokumentasi tambahan:
-
-- [Arsitektur Hari 14](docs/architecture/reference-day14.md)
-- [Catatan course Hari 1–14](docs/day-01-through-09.md) dan [Hari 10–14](docs/day-10-through-14.md)
-- [Runbook](docs/operations/runbook.md)
-- [Hasil verification](docs/VERIFICATION.md)
-- [Panduan portfolio](docs/portfolio/guide.md)
-- [Desain cloud](docs/deployment/cloud-design.md) — rancangan saja, belum dideploy
-
-## Batasan
-
-Semua source data berupa fixture sintetis; customer, product, dan refund dimuat dari seed, bukan CDC. Kafka berjalan sebagai satu broker. Snapshot exporter membaca tabel ke memory. Belum ada deployment cloud, high availability, pengiriman notifikasi alert, atau load test.
 
 Untuk menghentikan layanan tanpa menghapus data di volume:
 
