@@ -1,0 +1,27 @@
+name: manual-image-release
+# Publish to GHCR only after a manually dispatched verification workflow succeeds.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tagged application image
+        run: docker compose --profile tools build app
+      - name: Publish immutable commit tag to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag nusacommerce-platform:local "$image"
+          docker push "$image"
+          echo "Published $image" >> "$GITHUB_STEP_SUMMARY"

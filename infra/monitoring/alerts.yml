@@ -1,0 +1,27 @@
+groups:
+  - name: nusacommerce
+    rules:
+      - alert: NusaExporterDown
+        expr: up{job="nusacommerce"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Exporter unavailable; inspect database and process health.
+      - alert: NusaPipelineUnhealthy
+        expr: nusa_pipeline_healthy == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: Ingestion freshness, latest-run state, or quality check failed.
+      - alert: NusaQualityFailed
+        expr: nusa_quality_last_run_passed == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: Latest quality gate did not pass; do not trust publication.
+      - alert: NusaStuckIngestion
+        expr: nusa_ingestion_stale_runs > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: An ingestion run has remained running for more than an hour.

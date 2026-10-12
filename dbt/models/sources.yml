@@ -1,0 +1,12 @@
+version: 2
+sources:
+  - name: landing
+    schema: landing
+    tables:
+      - name: raw_order_versions
+      - name: raw_payment_versions
+      - name: raw_customer_history
+      - name: raw_products
+      - name: raw_order_items
+      - name: raw_refunds
+      - name: clickstream_events
